@@ -1,0 +1,279 @@
+<!doctype html>
+<html>
+<head>
+<script>
+
+var tileList = [];
+var orientations = { HORIZONTAL: 1, VERTICAL: 2 };
+
+function rndInt(max)
+{
+  return Math.floor(Math.random() * max);
+}
+
+function rotateCW(tile)
+{
+	// 1. left-shift <<
+	// 2. AND with the 5th bit (16)
+	// 3. If true, subtract 15 (-16, +1) to get the LSB turned on
+
+	var workingTile = tile << 1;
+	if (workingTile & 16)
+	{
+		workingTile -= 15;
+	}
+	
+	return workingTile;
+}
+
+function rotateACW(tile)
+{
+	// 1. AND with 1st bit (1)
+	// 2. zero-fill right-shift >>>
+	// 3. If step 2 is true, add 8 to get the MSB turned on
+
+	var fillRequired = tile & 1;
+	var workingTile = tile >>> 1;
+	
+	if (fillRequired)
+	{
+		workingTile += 8;
+	}
+	
+	return workingTile;
+}
+
+function createTileSet(auto, ones, twos, threes)
+{
+	var set = [];
+	if (auto)
+	{
+		ones = 2;
+		twos = 15;
+		threes = 8;
+	}
+	
+	set.push(...createTileGroup(1, ones));
+	set.push(...createTileGroup(2, twos));
+	set.push(...createTileGroup(3, threes));
+	
+	return set;
+}
+
+function createTileGroup(exits, count)
+{
+	var group = [],
+		types = [0, 1, 3, 7];
+	
+	for (var n = 1; n <= count; n += 1)
+	{
+		group.push(types[exits]);
+	}
+	
+	return group;
+}
+
+function areConnected(tile1, tile2, orientation)
+{
+	switch (orientation)
+	{
+		case orientations.VERTICAL:
+			return !!((tile1 & 1 && tile2 & 4) || (tile1 & 4 && tile2 & 1));
+		case orientations.HORIZONTAL:
+			return !!((tile1 & 2 && tile2 & 8) || (tile1 & 8 && tile2 & 2));
+	}
+}
+
+function ctoi(coords)
+{
+	return (coords.y * 5) + coords.x;
+}
+function itoc(index)
+{
+	var x = index % 5;
+	var y = (index - x) / 5;
+	
+	return { x: x, y: y };
+}
+
+
+function renderTile(tile)
+{
+	var tileNode = document.createElement('div');
+	tileNode.classList.add('tile');
+	
+	var northLink = document.createElement('div');
+	northLink.className = 'link n';
+	var eastLink = document.createElement('div');
+	eastLink.className = 'link e';
+	var southLink = document.createElement('div');
+	southLink.className = 'link s';
+	var westLink = document.createElement('div');
+	westLink.className = 'link w';
+	
+	tileNode.appendChild(northLink);
+	tileNode.appendChild(eastLink);
+	tileNode.appendChild(southLink);
+	tileNode.appendChild(westLink);
+	
+	var compass = ['','n','e','','s','','','','w'],
+		conc = [compass[tile & 1], compass[tile & 2], compass[tile & 4], compass[tile & 8]].join('').split('');
+	
+	conc.forEach(c => tileNode.classList.add(c));
+	
+	return tileNode;
+}
+
+function drawBoard(tileSet)
+{
+	var board = document.getElementById('board'),
+		tiles = document.createDocumentFragment();
+
+	while (board.firstChild) {
+		board.removeChild(board.lastChild);
+	}
+	
+	for (var i = 0; i < tileSet.length; i+=1)
+	{
+		tiles.appendChild(renderTile(tileSet[i]));
+	}
+	
+	board.appendChild(tiles);
+}
+
+function fyShuffle(array) {
+  var m = array.length, t, i;
+  while (m) {
+    i = Math.floor(Math.random() * m--);
+    t = array[m];
+    array[m] = array[i];
+    array[i] = t;
+  }
+}
+
+function rotShuffle(tile)
+{
+	var i, reps = rndInt(4);
+	
+	for (i = 0; i <= reps; i += 1)
+	{
+		tile = rotateCW(tile);
+	}
+	
+	return tile;
+}
+
+function shuffleTileSet(tileSet)
+{
+	// randomly reorder tiles
+	fyShuffle(tileSet);
+	
+	// randomly rotate tiles
+	tileSet = tileSet.map((tile) => rotShuffle(tile));
+
+	return tileSet;
+}
+
+function startGame()
+{
+	drawBoard(shuffleTileSet(createTileSet(true)));
+}
+
+function init()
+{
+	document.getElementById('start').addEventListener('click', startGame);
+}
+
+document.addEventListener('DOMContentLoaded', init);
+
+</script>
+
+<style>
+#board
+{
+	width: 550px;
+	line-height: 0;
+}
+
+.tile
+{
+	position: relative;
+	display: inline-block;
+	width: 100px;
+	height: 100px;
+	border: 2px solid #000;
+	border-radius: 10px;
+	margin: 1px;
+}
+
+.link
+{
+	position: absolute;
+	display: block;
+	visibility: hidden;
+	border: 5px solid #000;
+	border-radius: 5px;
+}
+
+.tile.n .link.n,
+.tile.e .link.e,
+.tile.s .link.s,
+.tile.w .link.w
+{
+	visibility: visible;
+}
+
+.link.n, .link.s
+{
+	width: 0px;
+	height: 40px;
+}
+.link.e, .link.w
+{
+	width: 40px;
+	height: 0px;
+}
+.link.n
+{
+	top: 0;
+	left: 45px;
+}
+.link.s
+{
+	top: 50px;
+	left: 45px;
+}
+.link.e
+{
+	top: 45px;
+	left: 50px;
+}
+.link.w
+{
+	top: 45px;
+	left: 0;
+}
+
+
+
+</style>
+
+</head>
+
+<body>
+
+<button id="start">Start Game</button>
+
+<div id="board"></div>
+
+<!--
+	<div class="tile n e">
+		<div class="link n"></div>
+		<div class="link e"></div>
+		<div class="link s"></div>
+		<div class="link w"></div>
+	</div>
+-->
+
+</body>
+</html>
