@@ -2,9 +2,11 @@
 <html>
 <head>
 <script>
+'use strict';
 
-var tileList = [];
-var orientations = { HORIZONTAL: 1, VERTICAL: 2 };
+var tileList = [],
+	orientations = { HORIZONTAL: 1, VERTICAL: 2 },
+	boardNode;
 
 function rndInt(max)
 {
@@ -43,6 +45,29 @@ function rotateACW(tile)
 	return workingTile;
 }
 
+function areConnected(tile1, tile2, orientation)
+{
+	switch (orientation)
+	{
+		case orientations.VERTICAL:
+			return !!((tile1 & 1 && tile2 & 4) || (tile1 & 4 && tile2 & 1));
+		case orientations.HORIZONTAL:
+			return !!((tile1 & 2 && tile2 & 8) || (tile1 & 8 && tile2 & 2));
+	}
+}
+
+function ctoi(coords)
+{
+	return (coords.y * 5) + coords.x;
+}
+function itoc(index)
+{
+	var x = index % 5;
+	var y = (index - x) / 5;
+	
+	return { x: x, y: y };
+}
+
 function createTileSet(auto, ones, twos, threes)
 {
 	var set = [];
@@ -73,31 +98,7 @@ function createTileGroup(exits, count)
 	return group;
 }
 
-function areConnected(tile1, tile2, orientation)
-{
-	switch (orientation)
-	{
-		case orientations.VERTICAL:
-			return !!((tile1 & 1 && tile2 & 4) || (tile1 & 4 && tile2 & 1));
-		case orientations.HORIZONTAL:
-			return !!((tile1 & 2 && tile2 & 8) || (tile1 & 8 && tile2 & 2));
-	}
-}
-
-function ctoi(coords)
-{
-	return (coords.y * 5) + coords.x;
-}
-function itoc(index)
-{
-	var x = index % 5;
-	var y = (index - x) / 5;
-	
-	return { x: x, y: y };
-}
-
-
-function renderTile(tile)
+function renderTile(tile, index)
 {
 	var tileNode = document.createElement('div');
 	tileNode.classList.add('tile');
@@ -110,11 +111,25 @@ function renderTile(tile)
 	southLink.className = 'link s';
 	var westLink = document.createElement('div');
 	westLink.className = 'link w';
-	
+	var indexAttr = document.createAttribute('data-index');
+	indexAttr.nodeValue = index;
+
+	tileNode.attributes.setNamedItem(indexAttr);
 	tileNode.appendChild(northLink);
 	tileNode.appendChild(eastLink);
 	tileNode.appendChild(southLink);
 	tileNode.appendChild(westLink);
+
+	var rotACWButton = document.createElement('button');
+	rotACWButton.appendChild(document.createTextNode('<'));
+	rotACWButton.className = 'rotator acw';
+
+	var rotCWButton = document.createElement('button');
+	rotCWButton.appendChild(document.createTextNode('>'));
+	rotCWButton.className = 'rotator cw';
+
+	tileNode.appendChild(rotACWButton);
+	tileNode.appendChild(rotCWButton);
 	
 	var compass = ['','n','e','','s','','','','w'],
 		conc = [compass[tile & 1], compass[tile & 2], compass[tile & 4], compass[tile & 8]].join('').split('');
@@ -126,19 +141,19 @@ function renderTile(tile)
 
 function drawBoard(tileSet)
 {
-	var board = document.getElementById('board'),
-		tiles = document.createDocumentFragment();
+	var tiles = document.createDocumentFragment();
 
-	while (board.firstChild) {
-		board.removeChild(board.lastChild);
+	while (boardNode.firstChild)
+	{
+		boardNode.removeChild(board.lastChild);
 	}
 	
 	for (var i = 0; i < tileSet.length; i+=1)
 	{
-		tiles.appendChild(renderTile(tileSet[i]));
+		tiles.appendChild(renderTile(tileSet[i], i));
 	}
 	
-	board.appendChild(tiles);
+	boardNode.appendChild(tiles);
 }
 
 function fyShuffle(array) {
@@ -174,13 +189,35 @@ function shuffleTileSet(tileSet)
 	return tileSet;
 }
 
+function handleBoardClick(ev)
+{
+	var target = ev.target,
+		tileNode, tileIndex;
+
+	if (target.classList.contains('rotator'))
+	{
+		tileNode = target.parentNode;
+		tileIndex = parseInt(tileNode.attributes.getNamedItem('data-index').value, 10);
+
+		tileList[tileIndex] = target.classList.contains('acw')
+			? rotateACW(tileList[tileIndex])
+			: rotateCW(tileList[tileIndex]);
+		
+		// [TODO] Try to re-render the single tile
+		drawBoard(tileList);
+	}
+}
+
 function startGame()
 {
-	drawBoard(shuffleTileSet(createTileSet(true)));
+	tileList = shuffleTileSet(createTileSet(true));
+	drawBoard(tileList);
 }
 
 function init()
 {
+	boardNode = document.getElementById('board');
+	boardNode.addEventListener('click', handleBoardClick);
 	document.getElementById('start').addEventListener('click', startGame);
 }
 
@@ -254,6 +291,39 @@ document.addEventListener('DOMContentLoaded', init);
 	left: 0;
 }
 
+.rotator
+{
+	display: none;
+	position: absolute;
+	width: 28px;
+	height: 28px;
+	top: 10px;
+	color: #999;
+	border: 1px solid #999;
+	border-radius: 5px;
+	background-color: #fff;
+}
+.rotator:hover
+{
+	color: #333;
+	border-color: #666;
+	background-color: #eee;
+	cursor: pointer;
+}
+.rotator.acw
+{
+	left: 10px;
+}
+
+.rotator.cw
+{
+	right: 10px;
+}
+
+.tile:hover .rotator
+{
+	display: block;
+}
 
 
 </style>
@@ -272,6 +342,8 @@ document.addEventListener('DOMContentLoaded', init);
 		<div class="link e"></div>
 		<div class="link s"></div>
 		<div class="link w"></div>
+		<button id="r-acw" class="rotator acw">&lt;</button>
+		<button id="r-cw" class="rotator cw">&gt;</button>
 	</div>
 -->
 
