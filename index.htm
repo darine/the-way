@@ -6,7 +6,8 @@
 
 var tileList = [],
 	orientations = { HORIZONTAL: 1, VERTICAL: 2 },
-	boardNode;
+	boardNode,
+	tileModel = { index: 0, connections: 0,  };
 
 function rndInt(max)
 {
@@ -54,6 +55,25 @@ function areConnected(tile1, tile2, orientation)
 		case orientations.HORIZONTAL:
 			return !!((tile1 & 2 && tile2 & 8) || (tile1 & 8 && tile2 & 2));
 	}
+
+	return areConnected(tile1, tile2, orientations.HORIZONTAL) || areConnected(tile1, tile2, orientations.VERTICAL);
+}
+
+function adjacentToC(coords)
+{
+	var adjacentCoords = [];
+
+	if (coords.x > 0) { adjacentCoords.push({x: coords.x-1, y: coords.y}); }
+	if (coords.x < 4) { adjacentCoords.push({x: coords.x+1, y: coords.y}); }
+	if (coords.y > 0) { adjacentCoords.push({x: coords.x, y: coords.y-1}); }
+	if (coords.y < 4) { adjacentCoords.push({x: coords.x, y: coords.y+1}); }
+
+	return adjacentCoords;
+}
+
+function adjacentToI(index)
+{
+	return adjacentToC(itoc(index)).map((c) => ctoi(c));
 }
 
 function ctoi(coords)
@@ -189,6 +209,20 @@ function shuffleTileSet(tileSet)
 	return tileSet;
 }
 
+function placeStartEndPoints(tileset)
+{
+	var coords = [
+		{x:0, y:0},
+		{x:4, y:0},
+		{x:0, y:4},
+		{x:4, y:4}
+	];
+	
+	coords.map((v) => { tileset[ctoi(v)] = 15; });
+
+	return tileset;
+}
+
 function handleBoardClick(ev)
 {
 	var target = ev.target,
@@ -210,7 +244,7 @@ function handleBoardClick(ev)
 
 function startGame()
 {
-	tileList = shuffleTileSet(createTileSet(true));
+	tileList = placeStartEndPoints(shuffleTileSet(createTileSet(true)));
 	drawBoard(tileList);
 }
 
